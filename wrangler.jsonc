@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "glyphq-analytics",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-22",
+  "workers_dev": true,
+  "routes": [{ "pattern": "analytics.glyphq.org", "custom_domain": true }],
+  "durable_objects": {
+    "bindings": [{ "name": "DOWNLOAD_COUNTER", "class_name": "DownloadCounter" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["DownloadCounter"] }]
+}
