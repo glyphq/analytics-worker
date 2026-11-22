@@ -1,4 +1,4 @@
-import { bindings, defineConfig, exports } from "cf/config";
+import { bindings, defineConfig, exports, triggers } from "cf/config";
 import * as entrypoint from "./src/index.ts" with { type: "cf-worker" };
 
 export default defineConfig({
@@ -7,6 +7,7 @@ export default defineConfig({
     compatibilityDate: "2026-11-22",
     entrypoint,
     domains: ["analytics.glyphq.org"],
+    triggers: [triggers.fetch({ pattern: "glyphq.org/api/*", zone: "glyphq.org" })],
     env: {
       DOWNLOAD_COUNTER: bindings.durableObject({
         worker: "glyphq-analytics",

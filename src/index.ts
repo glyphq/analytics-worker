@@ -178,8 +178,9 @@ export class DownloadCounter {
 
   private async handle(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    const pathname = url.pathname.replace(/^\/api(?=\/)/, "");
 
-    if (url.pathname === "/support" || url.pathname === "/support/") {
+    if (pathname === "/support" || pathname === "/support/") {
       if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
 
       const ttl = supportTtl(url.searchParams.get("ttl"));
@@ -233,23 +234,24 @@ export class DownloadCounter {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    const pathname = url.pathname.replace(/^\/api(?=\/)/, "");
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
 
-    if (url.pathname === "/support" || url.pathname === "/support/") {
+    if (pathname === "/support" || pathname === "/support/") {
       if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
       const id = env.DOWNLOAD_COUNTER.idFromName("global");
       return env.DOWNLOAD_COUNTER.get(id).fetch(request);
     }
 
-    if (url.pathname === "/downloads" || url.pathname === "/downloads/") {
+    if (pathname === "/downloads" || pathname === "/downloads/") {
       const id = env.DOWNLOAD_COUNTER.idFromName("global");
       return env.DOWNLOAD_COUNTER.get(id).fetch(request);
     }
 
-    if (url.pathname === "/") {
+    if (pathname === "/") {
       return json({
         ok: true,
         endpoints: ["GET /downloads", "POST /downloads", "GET /support?ttl=120"],

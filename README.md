@@ -16,8 +16,9 @@ manifests (`latest.json`), signatures, checksums, and update archives are exclud
 After seeding, new downloads are counted by the Worker. Each IP is limited to 10 tracked
 downloads per 10 minutes so the counter cannot be spammed.
 
-The Worker is intended to be served at `https://analytics.glyphq.org`. CORS allows all
-origins because the endpoints expose no private data.
+The Worker is served at `https://analytics.glyphq.org` and on `https://glyphq.org/api/*`.
+The landing uses the same-origin route. CORS allows all origins because the endpoints expose
+no private data.
 
 ```sh
 bun install
