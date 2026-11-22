@@ -23,5 +23,5 @@ origins because the endpoints expose no private data.
 bun install
 bun run check
 bun run dev
-bun run deploy
+bun run deploy # cf deploy
 ```

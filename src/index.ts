@@ -48,6 +48,7 @@ const rateLimit = 10;
 const donationIdentity = "LOGCQXSJIQFNNFHFBADRFLVNNXGBVKZGJXOPZSHTQDKNRIIFWXXPYVUCUSTD";
 const legacyDonationIdentity = "XIKAQZMFGQSALEMMJRATPPRESWTBXQVCOHTHCZWDGFXVBMCAHBCRUICFOQBI";
 const donationTarget = 2000;
+const baselineDownloads = 492;
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -122,34 +123,6 @@ const supportTtl = (value: string | null) => {
   return Math.min(900, Math.max(60, Math.floor(parsed)));
 };
 
-const supportResponse = async (request: Request): Promise<Response> => {
-  const ttl = supportTtl(new URL(request.url).searchParams.get("ttl"));
-  const cache = caches.default;
-  const cacheKey = new Request(`${new URL(request.url).origin}/support?ttl=${ttl}`, {
-    method: "GET",
-  });
-
-  try {
-    const cached = await cache.match(cacheKey);
-    if (cached) return cached;
-  } catch {
-    // Continue without the edge cache if it is unavailable.
-  }
-
-  try {
-    const data = await fetchSupportData();
-    const response = json(data, 200, { "Cache-Control": `public, max-age=${ttl}` });
-    try {
-      await cache.put(cacheKey, response.clone());
-    } catch {
-      // A cache write failure must not fail the response.
-    }
-    return response;
-  } catch {
-    return json({ error: "Donation data unavailable" }, 502);
-  }
-};
-
 const fetchHistoricalDownloads = async (): Promise<number> => {
   let total = 0;
 
@@ -190,10 +163,10 @@ export class DownloadCounter {
 
       try {
         this.total = await fetchHistoricalDownloads();
-        await state.storage.put("total", this.total);
       } catch {
-        this.total = 0;
+        this.total = baselineDownloads;
       }
+      await state.storage.put("total", this.total);
     });
   }
 
@@ -204,6 +177,25 @@ export class DownloadCounter {
   }
 
   private async handle(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/support" || url.pathname === "/support/") {
+      if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
+
+      const ttl = supportTtl(url.searchParams.get("ttl"));
+      const key = `support:${ttl}`;
+      const cached = await this.state.storage.get<{ at: number; data: SupportData }>(key);
+      if (cached && Date.now() - cached.at < ttl * 1000) return json(cached.data);
+
+      try {
+        const data = await fetchSupportData();
+        await this.state.storage.put(key, { at: Date.now(), data });
+        return json(data);
+      } catch {
+        return json({ error: "Donation data unavailable" }, 502);
+      }
+    }
+
     if (request.method === "POST") {
       const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
       const rateKey = `rate:${ip}`;
@@ -248,7 +240,8 @@ export default {
 
     if (url.pathname === "/support" || url.pathname === "/support/") {
       if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
-      return supportResponse(request);
+      const id = env.DOWNLOAD_COUNTER.idFromName("global");
+      return env.DOWNLOAD_COUNTER.get(id).fetch(request);
     }
 
     if (url.pathname === "/downloads" || url.pathname === "/downloads/") {
